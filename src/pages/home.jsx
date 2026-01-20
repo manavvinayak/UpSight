@@ -1,0 +1,361 @@
+ import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { storage } from '../utils/storage';
+import { processDocument, loadOpenCV } from '../utils/documentProcessor';
+import { pdfToImage } from '../utils/pdfProcessor';
+import Logo from '../components/Logo';
+
+const Home = () => {
+  const { user, signout } = useAuth();
+  const navigate = useNavigate();
+
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const [originalPreview, setOriginalPreview] = useState('');
+  const [correctedPreview, setCorrectedPreview] = useState('');
+
+  const [zoom, setZoom] = useState(1);
+
+  // No OpenCV loading needed anymore - instant ready!
+
+  const handleFileChange = (e) => {
+    const selected = e.target.files[0];
+    if (!selected) return;
+
+    const valid = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
+    if (!valid.includes(selected.type)) {
+      setError('Please select PNG, JPEG or PDF');
+      return;
+    }
+
+    setFile(selected);
+    setError('');
+    setOriginalPreview('');
+    setCorrectedPreview('');
+  };
+
+  const handleProcess = async () => {
+    if (!file) {
+      setError('Please select a file first');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      let imageFile = file;
+
+      // Convert PDF to image if needed
+      if (file.type === 'application/pdf') {
+        imageFile = await pdfToImage(file);
+      }
+
+      // Process with native Canvas API
+      const result = await processDocument(imageFile);
+
+      if (!result.success) {
+        setError(result.message || 'Processing failed');
+        setOriginalPreview(result.originalUrl);
+        setLoading(false);
+        return;
+      }
+
+      // Save to storage
+      const uploadId = Date.now().toString();
+      const originalKey = `${user.id}_${uploadId}_original`;
+      const processedKey = `${user.id}_${uploadId}_processed`;
+
+      const originalBlob = await fetch(result.originalUrl).then(r => r.blob());
+
+      await storage.saveFile(originalKey, originalBlob);
+      await storage.saveFile(processedKey, result.blob);
+
+      await storage.saveUpload(user.id, {
+        id: uploadId,
+        userId: user.id,
+        filename: file.name,
+        originalFileKey: originalKey,
+        processedFileKey: processedKey,
+        status: 'completed',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      setOriginalPreview(result.originalUrl);
+      setCorrectedPreview(result.correctedUrl || '');
+    } catch (e) {
+      console.error(e);
+      setError('Failed to process document');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignout = () => {
+    signout();
+    navigate('/signin');
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <header className="bg-white border-b border-slate-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          <Logo className="hover:opacity-80 transition-opacity cursor-pointer" onClick={() => navigate('/')} />
+          <div className="flex gap-3 items-center">
+            <span className="text-sm text-slate-600">{user?.email}</span>
+            <button 
+              onClick={() => navigate('/history')} 
+              className="px-4 py-2 text-sm font-medium text-slate-900 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              History
+            </button>
+            <button 
+              onClick={handleSignout} 
+              className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-900 transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto p-6">
+        <div className="bg-white p-6 rounded-lg shadow-sm border-2 border-slate-300">
+          <h2 className="text-xl font-semibold text-slate-900 mb-1">Upload Document</h2>
+          <p className="text-sm text-slate-600 mb-4">Smart document scanning, right in your browser</p>
+          
+          {error && (
+            <div className="bg-red-50 border border-red-500 text-red-500 p-3 mb-4 text-sm rounded-lg flex items-start gap-2">
+              <svg className="w-5 h-5 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
+              </svg>
+              <div className="flex-1">
+                <p className="font-medium">{error}</p>
+                {originalPreview && (
+                  <button 
+                    onClick={() => { setError(''); handleProcess(); }} 
+                    className="text-sm underline mt-1 hover:text-red-600"
+                  >
+                    Retry
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="mb-4">
+            <label 
+              htmlFor="file-upload"
+              className="relative block w-full border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-blue-600 transition-colors cursor-pointer group"
+            >
+              <input
+                id="file-upload"
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,application/pdf"
+                onChange={handleFileChange}
+                className="sr-only"
+              />
+              <svg className="mx-auto h-12 w-12 text-slate-400 group-hover:text-blue-600 transition-colors" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <p className="mt-2 text-sm font-medium text-slate-900">Click to upload a document</p>
+              <p className="mt-1 text-xs text-slate-600">or drag and drop</p>
+            </label>
+          </div>
+
+          {file && (
+            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd"/>
+              </svg>
+              <p className="text-sm text-slate-900 flex-1">
+                <span className="font-medium">Selected:</span> {file.name}
+              </p>
+            </div>
+          )}
+
+          <button
+            onClick={handleProcess}
+            disabled={loading || !file}
+            className="w-full bg-slate-800 text-white py-3.5 px-4 rounded-lg hover:bg-slate-900 disabled:bg-slate-400 disabled:cursor-not-allowed font-medium transition-colors flex items-center justify-center gap-2"
+          >
+            {loading && (
+              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
+            {loading ? 'Processing…' : 'Process Document'}
+          </button>
+        </div>
+
+        <div className="mt-6 bg-white p-6 rounded-lg border border-slate-200">
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">How It Works</h3>
+          <div className="flex items-start gap-3">
+            <div className="flex-1 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-base font-medium text-slate-900">Upload</h4>
+                <p className="text-sm text-slate-600 mt-0.5">Drag & drop or click to upload</p>
+              </div>
+            </div>
+
+            <svg className="w-4 h-4 text-slate-300 shrink-0 mt-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+
+            <div className="flex-1 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center  shrink-0">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-base font-medium text-slate-900">Process</h4>
+                <p className="text-sm text-slate-600 mt-0.5">AI enhances contrast & clarity</p>
+              </div>
+            </div>
+
+            <svg className="w-4 h-4 text-slate-300  shrink-0 mt-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+
+            <div className="flex-1 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-base font-medium text-slate-900">Download</h4>
+                <p className="text-sm text-slate-600 mt-0.5">Get your clear document instantly</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 bg-white p-6 rounded-lg border border-slate-200">
+          <h3 className="text-base font-medium text-slate-700 mb-4">Supports various document types</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="group">
+              <div className="aspect-3/2 bg-slate-50 rounded border border-slate-200 overflow-hidden">
+                <img 
+                  src="https://plus.unsplash.com/premium_photo-1728313181661-5b93fbfe362a?q=80&w=784&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
+                  alt="ID card example" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <p className="text-xs text-slate-600 mt-2">ID cards, badges</p>
+            </div>
+
+            <div className="group">
+              <div className="aspect-3/2 bg-slate-50 rounded border border-slate-200 overflow-hidden">
+                <img 
+                  src="https://plus.unsplash.com/premium_photo-1679856789519-790899bcaa09?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
+                  alt="Resume example" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <p className="text-xs text-slate-600 mt-2">Resumes, reports</p>
+            </div>
+
+            <div className="group">
+              <div className="aspect-3/2 bg-slate-50 rounded border border-slate-200 overflow-hidden">
+                <img 
+                  src="YOUR_PRINTED_PAPER_IMAGE_URL_HERE" 
+                  alt="Printed document example" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <p className="text-xs text-slate-600 mt-2">Printed documents</p>
+            </div>
+
+            <div className="group">
+              <div className="aspect-3/2 bg-slate-50 rounded border border-slate-200 overflow-hidden">
+                <img 
+                  src="https://images.unsplash.com/photo-1665624856648-0e84b440176d?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
+                  alt="Receipt example" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <p className="text-xs text-slate-600 mt-2">Receipts, invoices</p>
+            </div>
+          </div>
+        </div>
+
+        {(originalPreview || correctedPreview) && (
+          <div className="mt-6 bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <h2 className="text-xl font-semibold text-slate-900">Before / After</h2>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-slate-900">Zoom:</span>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="3"
+                  step="0.1"
+                  value={zoom}
+                  onChange={(e) => setZoom(parseFloat(e.target.value))}
+                  className="w-32 accent-blue-600"
+                />
+                <span className="text-sm text-slate-600 min-w-[3rem] text-right">{Math.round(zoom * 100)}%</span>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              {originalPreview && (
+                <div className="border-2 border-slate-200 rounded-lg overflow-hidden">
+                  <div className="bg-slate-100 px-4 py-2.5 border-b border-slate-200">
+                    <h3 className="text-sm font-semibold text-slate-700">Original</h3>
+                  </div>
+                  <div className="overflow-auto max-h-[500px] p-4 bg-slate-50 flex items-center justify-center">
+                    <img
+                      src={originalPreview}
+                      alt="original document"
+                      style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}
+                      className="transition-transform shadow-md"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {correctedPreview && (
+                <div className="border-2 border-slate-800 rounded-lg overflow-hidden">
+                  <div className="bg-slate-800 px-4 py-2.5 border-b border-slate-900">
+                    <h3 className="text-sm font-semibold text-white">Processed</h3>
+                  </div>
+                  <div className="overflow-auto max-h-[500px] p-4 bg-white flex items-center justify-center">
+                    <img
+                      src={correctedPreview}
+                      alt="processed document"
+                      style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}
+                      className="transition-transform shadow-md"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {correctedPreview && (
+              <div className="mt-4 p-3 bg-emerald-50 border border-emerald-600 rounded-lg">
+                <p className="text-sm text-emerald-600 font-medium">
+                  ✓ Document scanned successfully with clean, professional look!
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default Home;
