@@ -5,6 +5,8 @@ import Home from './pages/home';
 import History from './pages/history';
 import Signin from './pages/signin';
 import Signup from './pages/singup';
+import Privacy from './pages/privacy';
+import Terms from './pages/terms';
 import './App.css';
 
 function App() {
@@ -14,6 +16,8 @@ function App() {
         <Routes>
           <Route path="/signin" element={<Signin />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route
             path="/"
             element={

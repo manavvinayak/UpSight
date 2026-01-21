@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
+import Footer from '../components/Footer';
 
 const Signup = () => {
   const [email, setEmail] = useState('');
@@ -39,15 +40,16 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-sm p-8 border border-slate-200">
-        {/* Logo & Tagline */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-3">
-            <Logo size="large" />
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <div className="flex-1 flex items-center justify-center px-4 py-12">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-sm p-8 border border-slate-200">
+          {/* Logo & Tagline */}
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-3">
+              <Logo size="large" />
+            </div>
+            <p className="text-sm text-slate-600">Smart document scanning, in your browser.</p>
           </div>
-          <p className="text-sm text-slate-600">Smart document scanning, in your browser.</p>
-        </div>
 
         <h2 className="text-2xl font-semibold text-slate-900 mb-6">Create Account</h2>
         
@@ -116,6 +118,9 @@ const Signup = () => {
           </Link>
         </p>
       </div>
+    </div>
+
+    <Footer />
     </div>
   );
 };

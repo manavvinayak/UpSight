@@ -5,6 +5,7 @@ import { storage } from '../utils/storage';
 import { processDocument, loadOpenCV } from '../utils/documentProcessor';
 import { pdfToImage } from '../utils/pdfProcessor';
 import Logo from '../components/Logo';
+import Footer from '../components/Footer';
 
 const Home = () => {
   const { user, signout } = useAuth();
@@ -18,6 +19,7 @@ const Home = () => {
   const [correctedPreview, setCorrectedPreview] = useState('');
 
   const [zoom, setZoom] = useState(1);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // No OpenCV loading needed anymore - instant ready!
 
@@ -101,11 +103,13 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <header className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
           <Logo className="hover:opacity-80 transition-opacity cursor-pointer" onClick={() => navigate('/')} />
-          <div className="flex gap-3 items-center">
+          
+          {/* Desktop Menu */}
+          <div className="hidden md:flex gap-3 items-center">
             <span className="text-sm text-slate-600">{user?.email}</span>
             <button 
               onClick={() => navigate('/history')} 
@@ -120,13 +124,51 @@ const Home = () => {
               Sign Out
             </button>
           </div>
+
+          {/* Mobile Hamburger */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors"
+            aria-label="Toggle menu"
+          >
+            <svg className="w-6 h-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {mobileMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
         </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-slate-200 bg-white">
+            <div className="px-4 py-3 space-y-3">
+              <div className="px-3 py-2 text-sm text-slate-600 bg-slate-50 rounded-lg">
+                {user?.email}
+              </div>
+              <button 
+                onClick={() => { navigate('/history'); setMobileMenuOpen(false); }} 
+                className="w-full px-4 py-2.5 text-sm font-medium text-slate-900 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-left"
+              >
+                History
+              </button>
+              <button 
+                onClick={() => { handleSignout(); setMobileMenuOpen(false); }} 
+                className="w-full px-4 py-2.5 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-900 transition-colors text-left"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
-      <main className="max-w-5xl mx-auto p-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border-2 border-slate-300">
-          <h2 className="text-xl font-semibold text-slate-900 mb-1">Upload Document</h2>
-          <p className="text-sm text-slate-600 mb-4">Smart document scanning, right in your browser</p>
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border-2 border-slate-300">
+          <h2 className="text-lg sm:text-xl font-semibold text-slate-900 mb-1">Upload Document</h2>
+          <p className="text-xs sm:text-sm text-blue-700 mb-4">Smart document scanning, right in your browser</p>
           
           {error && (
             <div className="bg-red-50 border border-red-500 text-red-500 p-3 mb-4 text-sm rounded-lg flex items-start gap-2">
@@ -150,7 +192,7 @@ const Home = () => {
           <div className="mb-4">
             <label 
               htmlFor="file-upload"
-              className="relative block w-full border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-blue-600 transition-colors cursor-pointer group"
+              className="relative block w-full border-2 border-dashed border-slate-300 rounded-lg p-6 sm:p-8 text-center hover:border-blue-600 transition-colors cursor-pointer group"
             >
               <input
                 id="file-upload"
@@ -159,7 +201,7 @@ const Home = () => {
                 onChange={handleFileChange}
                 className="sr-only"
               />
-              <svg className="mx-auto h-12 w-12 text-slate-400 group-hover:text-blue-600 transition-colors" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+              <svg className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-slate-400 group-hover:text-blue-600 transition-colors" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                 <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <p className="mt-2 text-sm font-medium text-slate-900">Click to upload a document</p>
@@ -193,108 +235,108 @@ const Home = () => {
           </button>
         </div>
 
-        <div className="mt-6 bg-white p-6 rounded-lg border border-slate-200">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">How It Works</h3>
-          <div className="flex items-start gap-3">
-            <div className="flex-1 flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+        <div className="mt-6 bg-white p-4 sm:p-6 rounded-lg border border-slate-200">
+          <h3 className="text-base sm:text-lg font-semibold text-blue-600 mb-4">How It Works</h3>
+          <div className="flex flex-col md:flex-row items-start gap-4 md:gap-3">
+            <div className="flex items-start gap-3 w-full md:flex-1">
+              <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                 </svg>
               </div>
               <div className="flex-1">
-                <h4 className="text-base font-medium text-slate-900">Upload</h4>
-                <p className="text-sm text-slate-600 mt-0.5">Drag & drop or click to upload</p>
+                <h4 className="text-sm sm:text-base font-medium text-slate-900">Upload</h4>
+                <p className="text-xs sm:text-sm text-slate-600 mt-0.5">Drag & drop or click to upload</p>
               </div>
             </div>
 
-            <svg className="w-4 h-4 text-slate-300 shrink-0 mt-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="hidden md:block w-6 h-6 text-blue-600 shrink-0 mt-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
 
-            <div className="flex-1 flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center  shrink-0">
+            <div className="flex items-start gap-3 w-full md:flex-1">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </div>
               <div className="flex-1">
-                <h4 className="text-base font-medium text-slate-900">Process</h4>
-                <p className="text-sm text-slate-600 mt-0.5">AI enhances contrast & clarity</p>
+                <h4 className="text-sm sm:text-base font-medium text-slate-900">Process</h4>
+                <p className="text-xs sm:text-sm text-slate-600 mt-0.5">AI enhances contrast & clarity</p>
               </div>
             </div>
 
-            <svg className="w-4 h-4 text-slate-300  shrink-0 mt-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="hidden md:block w-6 h-6 text-blue-600 shrink-0 mt-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
 
-            <div className="flex-1 flex items-start gap-3">
+            <div className="flex items-start gap-3 w-full md:flex-1">
               <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                 </svg>
               </div>
               <div className="flex-1">
-                <h4 className="text-base font-medium text-slate-900">Download</h4>
-                <p className="text-sm text-slate-600 mt-0.5">Get your clear document instantly</p>
+                <h4 className="text-sm sm:text-base font-medium text-slate-900">Download</h4>
+                <p className="text-xs sm:text-sm text-slate-600 mt-0.5">Get your clear document instantly</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-6 bg-white p-6 rounded-lg border border-slate-200">
-          <h3 className="text-base font-medium text-slate-700 mb-4">Supports various document types</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="mt-6 bg-white p-4 sm:p-6 md:p-8 rounded-lg border border-slate-200 shadow-sm">
+          <h3 className="text-base sm:text-lg md:text-xl font-semibold text-blue-600 mb-4 sm:mb-6">Supports various document types</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
             <div className="group">
-              <div className="aspect-3/2 bg-slate-50 rounded border border-slate-200 overflow-hidden">
+              <div className="aspect-3/2 bg-slate-50 rounded-lg border-2 border-slate-200 overflow-hidden hover:border-blue-300 transition-colors">
                 <img 
                   src="https://plus.unsplash.com/premium_photo-1728313181661-5b93fbfe362a?q=80&w=784&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
                   alt="ID card example" 
                   className="w-full h-full object-cover"
                 />
               </div>
-              <p className="text-xs text-slate-600 mt-2">ID cards, badges</p>
+              <p className="text-xs sm:text-sm font-medium text-slate-700 mt-2 sm:mt-3">ID cards, badges</p>
             </div>
 
             <div className="group">
-              <div className="aspect-3/2 bg-slate-50 rounded border border-slate-200 overflow-hidden">
+              <div className="aspect-3/2 bg-slate-50 rounded-lg border-2 border-slate-200 overflow-hidden hover:border-blue-300 transition-colors">
                 <img 
                   src="https://plus.unsplash.com/premium_photo-1679856789519-790899bcaa09?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
                   alt="Resume example" 
                   className="w-full h-full object-cover"
                 />
               </div>
-              <p className="text-xs text-slate-600 mt-2">Resumes, reports</p>
+              <p className="text-xs sm:text-sm font-medium text-slate-700 mt-2 sm:mt-3">Resumes, reports</p>
             </div>
 
             <div className="group">
-              <div className="aspect-3/2 bg-slate-50 rounded border border-slate-200 overflow-hidden">
+              <div className="aspect-3/2 bg-slate-50 rounded-lg border-2 border-slate-200 overflow-hidden hover:border-blue-300 transition-colors">
                 <img 
-                  src="YOUR_PRINTED_PAPER_IMAGE_URL_HERE" 
+                  src="https://images.unsplash.com/photo-1616861771635-49063a4636ed?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
                   alt="Printed document example" 
                   className="w-full h-full object-cover"
                 />
               </div>
-              <p className="text-xs text-slate-600 mt-2">Printed documents</p>
+              <p className="text-xs sm:text-sm font-medium text-slate-700 mt-2 sm:mt-3">Printed documents</p>
             </div>
 
             <div className="group">
-              <div className="aspect-3/2 bg-slate-50 rounded border border-slate-200 overflow-hidden">
+              <div className="aspect-3/2 bg-slate-50 rounded-lg border-2 border-slate-200 overflow-hidden hover:border-blue-300 transition-colors">
                 <img 
                   src="https://images.unsplash.com/photo-1665624856648-0e84b440176d?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
                   alt="Receipt example" 
                   className="w-full h-full object-cover"
                 />
               </div>
-              <p className="text-xs text-slate-600 mt-2">Receipts, invoices</p>
+              <p className="text-xs sm:text-sm font-medium text-slate-700 mt-2 sm:mt-3">Receipts, invoices</p>
             </div>
           </div>
         </div>
 
         {(originalPreview || correctedPreview) && (
-          <div className="mt-6 bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+          <div className="mt-6 bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-slate-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-              <h2 className="text-xl font-semibold text-slate-900">Before / After</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Before / After</h2>
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium text-slate-900">Zoom:</span>
                 <input
@@ -354,6 +396,8 @@ const Home = () => {
           </div>
         )}
       </main>
+
+      <Footer />
     </div>
   );
 };

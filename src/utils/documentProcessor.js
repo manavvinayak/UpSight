@@ -5,8 +5,7 @@ const unsharpMask = (imageData, width, height) => {
   const data = imageData.data;
   const blurred = new Uint8ClampedArray(data);
   
-  // Create blurred version for unsharp mask
-  for (let y = 1; y < height - 1; y++) {
+   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       const idx = (y * width + x) * 4;
       
@@ -54,34 +53,31 @@ const enhanceImage = (imageElement) => {
     let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
     
-    // Step 1: Gentle unsharp mask for text clarity
-    imageData = unsharpMask(imageData, canvas.width, canvas.height);
+     imageData = unsharpMask(imageData, canvas.width, canvas.height);
     
-    // Step 2: Gentle contrast and brightness
+    // Step 2: Gentle contrast and brightness sample
     const contrast = 1.4;  
     const brightness = 20;
     
     for (let i = 0; i < data.length; i += 4) {
-      // Apply to each color channel
-      for (let c = 0; c < 3; c++) {
+       for (let c = 0; c < 3; c++) {
         data[i + c] = ((data[i + c] - 128) * contrast + 128) + brightness;
         data[i + c] = Math.min(255, Math.max(0, data[i + c]));
       }
     }
     
-    // Step 3: Clean up backgrounds (light areas)
+    //   Clean up backgrounds (light areas)
     for (let i = 0; i < data.length; i += 4) {
       const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
       
-      // Brighten light backgrounds for cleaner look
-      if (avg > 190) {
+       if (avg > 190) {
         const boost = (255 - avg) * 0.4;
         data[i] = Math.min(255, data[i] + boost);
         data[i + 1] = Math.min(255, data[i + 1] + boost);
         data[i + 2] = Math.min(255, data[i + 2] + boost);
       }
       
-      // Slightly darken text areas for better contrast
+      // Slightly darken text areas  cite
       if (avg < 120) {
         const reduction = avg * 0.05;
         data[i] = Math.max(0, data[i] - reduction);
@@ -97,14 +93,12 @@ const enhanceImage = (imageElement) => {
   });
 };
 
-// No external library loading needed
-export const loadOpenCV = () => {
+ export const loadOpenCV = () => {
   console.log(' Using native Canvas API with clean document enhancement');
   return Promise.resolve(true);
 };
 
-// Process document - clean enhancement with improved text clarity
-export const processDocument = async (imageFile) => {
+ export const processDocument = async (imageFile) => {
   const imageUrl = URL.createObjectURL(imageFile);
   const img = new Image();
   
@@ -113,11 +107,9 @@ export const processDocument = async (imageFile) => {
       try {
          
         
-        // Apply balanced scan enhancement
-        const enhancedCanvas = await enhanceImage(img);
+         const enhancedCanvas = await enhanceImage(img);
         
-        // Convert to blob with high quality
-        enhancedCanvas.toBlob((blob) => {
+          enhancedCanvas.toBlob((blob) => {
           const enhancedUrl = URL.createObjectURL(blob);
            
           resolve({

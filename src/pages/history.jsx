@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { storage } from '../utils/storage';
 import Logo from '../components/Logo';
+import Footer from '../components/Footer';
 
 const History = () => {
   const { user, signout } = useAuth();
@@ -13,6 +14,9 @@ const History = () => {
   const [originalUrl, setOriginalUrl] = useState('');
   const [processedUrl, setProcessedUrl] = useState('');
   const [zoom, setZoom] = useState(1);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [uploadToDelete, setUploadToDelete] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     loadUploads();
@@ -52,23 +56,32 @@ const History = () => {
     }
   };
 
-  const handleDelete = async (uploadId) => {
-    if (!confirm('Are you sure you want to delete this upload?')) {
-      return;
-    }
+  const handleDeleteClick = (upload) => {
+    setUploadToDelete(upload);
+    setDeleteModalOpen(true);
+  };
 
+  const handleDeleteConfirm = async () => {
     try {
-      await storage.deleteUpload(user.id, uploadId);
-      setUploads(uploads.filter(u => u.id !== uploadId));
+      await storage.deleteUpload(user.id, uploadToDelete.id);
+      setUploads(uploads.filter(u => u.id !== uploadToDelete.id));
       
-      if (selectedUpload?.id === uploadId) {
+      if (selectedUpload?.id === uploadToDelete.id) {
         setSelectedUpload(null);
         setOriginalUrl('');
         setProcessedUrl('');
       }
     } catch (error) {
       console.error('Failed to delete upload:', error);
+    } finally {
+      setDeleteModalOpen(false);
+      setUploadToDelete(null);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setUploadToDelete(null);
   };
 
   const handleSignout = () => {
@@ -82,12 +95,14 @@ const History = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 shadow-sm">
+      <header className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <Logo className="hover:opacity-80 transition-opacity cursor-pointer" onClick={() => navigate('/')} />
-          <div className="flex items-center gap-3">
+          
+          {/* Desktop Menu */}
+          <div className="hidden md:flex items-center gap-3">
             <span className="text-sm text-slate-600">{user?.email}</span>
             <button
               onClick={() => navigate('/')}
@@ -102,11 +117,49 @@ const History = () => {
               Sign Out
             </button>
           </div>
+
+          {/* Mobile Hamburger */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors"
+            aria-label="Toggle menu"
+          >
+            <svg className="w-6 h-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {mobileMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
         </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-slate-200 bg-white">
+            <div className="px-4 py-3 space-y-3">
+              <div className="px-3 py-2 text-sm text-slate-600 bg-slate-50 rounded-lg">
+                {user?.email}
+              </div>
+              <button
+                onClick={() => { navigate('/'); setMobileMenuOpen(false); }}
+                className="w-full px-4 py-2.5 text-sm font-medium text-slate-900 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-left"
+              >
+                Upload
+              </button>
+              <button
+                onClick={() => { handleSignout(); setMobileMenuOpen(false); }}
+                className="w-full px-4 py-2.5 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-900 transition-colors text-left"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h2 className="text-2xl font-bold text-slate-900 mb-6">Document History</h2>
 
         {loading ? (
@@ -174,7 +227,7 @@ const History = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDelete(upload.id);
+                          handleDeleteClick(upload);
                         }}
                         className="px-3 py-2 text-sm font-medium text-red-500 border border-red-500 rounded-lg hover:bg-red-50 transition-colors"
                       >
@@ -275,6 +328,63 @@ const History = () => {
           </div>
         )}
       </main>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          {/* Backdrop with blur */}
+          <div 
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={handleDeleteCancel}
+          ></div>
+          
+          {/* Modal */}
+          <div className="relative bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            {/* Icon */}
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-lg font-semibold text-slate-900 text-center mb-2">
+              Delete Upload
+            </h3>
+
+            {/* Message */}
+            <p className="text-slate-600 text-center mb-2">
+              Are you sure you want to delete
+            </p>
+            <p className="text-slate-900 font-semibold text-center mb-2">
+              {uploadToDelete?.filename}
+            </p>
+            <p className="text-slate-600 text-center text-sm mb-6">
+              This action cannot be undone.
+            </p>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteCancel}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Footer />
     </div>
   );
 };
