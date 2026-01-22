@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 const Logo = ({ size = 'default', className = '' }) => {
   const sizeClasses = {
     small: 'text-xl',
@@ -6,12 +8,12 @@ const Logo = ({ size = 'default', className = '' }) => {
   };
 
   return (
-    <div className={`flex items-center ${className}`}>
+    <Link to="/" className={`flex items-center ${className}`}>
       {/* Text */}
       <span className={`${sizeClasses[size]} font-bold text-slate-900 tracking-tight`}>
         Up<span className="text-blue-600">Sight</span>
       </span>
-    </div>
+    </Link>
   );
 };
 

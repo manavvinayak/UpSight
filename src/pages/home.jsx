@@ -1,9 +1,10 @@
- import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { storage } from '../utils/storage';
 import { processDocument, loadOpenCV } from '../utils/documentProcessor';
 import { pdfToImage } from '../utils/pdfProcessor';
+import { uploadDocument } from '../services/api';
 import Logo from '../components/Logo';
 import Footer from '../components/Footer';
 
@@ -14,6 +15,7 @@ const Home = () => {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   const [originalPreview, setOriginalPreview] = useState('');
   const [correctedPreview, setCorrectedPreview] = useState('');
@@ -23,7 +25,7 @@ const Home = () => {
 
   // No OpenCV loading needed anymore - instant ready!
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const selected = e.target.files[0];
     if (!selected) return;
 
@@ -37,6 +39,43 @@ const Home = () => {
     setError('');
     setOriginalPreview('');
     setCorrectedPreview('');
+    setUploadSuccess(false);
+    
+    // Show preview for image files
+    if (selected.type.startsWith('image/')) {
+      const previewUrl = URL.createObjectURL(selected);
+      setOriginalPreview(previewUrl);
+    }
+
+    // Immediately upload to database
+    setLoading(true);
+    try {
+      let fileToUpload = selected;
+      
+      // Convert PDF to image if needed for upload
+      if (selected.type === 'application/pdf') {
+        try {
+          fileToUpload = await pdfToImage(selected);
+          const convertedPreviewUrl = URL.createObjectURL(fileToUpload);
+          setOriginalPreview(convertedPreviewUrl);
+        } catch (pdfError) {
+          console.error('PDF conversion failed:', pdfError);
+          setError(`PDF conversion failed: ${pdfError.message}`);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Upload original file immediately (use same file for both original and processed initially)
+      await uploadDocument(fileToUpload, fileToUpload, selected.name);
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 3000);
+    } catch (uploadError) {
+      console.error('Upload failed:', uploadError);
+      setError(`Upload failed: ${uploadError.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleProcess = async () => {
@@ -53,7 +92,23 @@ const Home = () => {
 
       // Convert PDF to image if needed
       if (file.type === 'application/pdf') {
-        imageFile = await pdfToImage(file);
+        console.log('Processing PDF file:', file.name);
+        try {
+          imageFile = await pdfToImage(file);
+          console.log('PDF converted to image successfully');
+          
+          // Show the converted PDF image as preview
+          const convertedPreviewUrl = URL.createObjectURL(imageFile);
+          setOriginalPreview(convertedPreviewUrl);
+          
+          // Update the file reference to the converted image
+          setFile(imageFile);
+        } catch (pdfError) {
+          console.error('PDF conversion failed:', pdfError);
+          setError(`PDF conversion failed: ${pdfError.message}`);
+          setLoading(false);
+          return;
+        }
       }
 
       // Process with native Canvas API
@@ -90,8 +145,8 @@ const Home = () => {
       setOriginalPreview(result.originalUrl);
       setCorrectedPreview(result.correctedUrl || '');
     } catch (e) {
-      console.error(e);
-      setError('Failed to process document');
+      console.error('Processing error:', e);
+      setError(`Failed to process document: ${e.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -170,6 +225,15 @@ const Home = () => {
           <h2 className="text-lg sm:text-xl font-semibold text-slate-900 mb-1">Upload Document</h2>
           <p className="text-xs sm:text-sm text-blue-700 mb-4">Smart document scanning, right in your browser</p>
           
+          {uploadSuccess && (
+            <div className="bg-green-50 border border-green-500 text-green-700 p-3 mb-4 text-sm rounded-lg flex items-center gap-2">
+              <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+              </svg>
+              <span className="font-medium">Document uploaded to cloud successfully!</span>
+            </div>
+          )}
+
           {error && (
             <div className="bg-red-50 border border-red-500 text-red-500 p-3 mb-4 text-sm rounded-lg flex items-start gap-2">
               <svg className="w-5 h-5 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -234,6 +298,69 @@ const Home = () => {
             {loading ? 'Processing…' : 'Process Document'}
           </button>
         </div>
+
+        {(originalPreview || correctedPreview) && (
+          <div className="mt-6 bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-slate-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Before / After</h2>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-slate-900">Zoom:</span>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="3"
+                  step="0.1"
+                  value={zoom}
+                  onChange={(e) => setZoom(parseFloat(e.target.value))}
+                  className="w-32 accent-blue-600"
+                />
+                <span className="text-sm text-slate-600 min-w-[3rem] text-right">{Math.round(zoom * 100)}%</span>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              {originalPreview && (
+                <div className="border-2 border-slate-200 rounded-lg overflow-hidden">
+                  <div className="bg-slate-100 px-4 py-2.5 border-b border-slate-200">
+                    <h3 className="text-sm font-semibold text-slate-700">Original</h3>
+                  </div>
+                  <div className="overflow-auto max-h-[500px] p-4 bg-slate-50 flex items-center justify-center">
+                    <img
+                      src={originalPreview}
+                      alt="original document"
+                      style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}
+                      className="transition-transform shadow-md"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {correctedPreview && (
+                <div className="border-2 border-slate-800 rounded-lg overflow-hidden">
+                  <div className="bg-slate-800 px-4 py-2.5 border-b border-slate-900">
+                    <h3 className="text-sm font-semibold text-white">Processed</h3>
+                  </div>
+                  <div className="overflow-auto max-h-[500px] p-4 bg-white flex items-center justify-center">
+                    <img
+                      src={correctedPreview}
+                      alt="processed document"
+                      style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}
+                      className="transition-transform shadow-md"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {correctedPreview && (
+              <div className="mt-4 p-3 bg-emerald-50 border border-emerald-600 rounded-lg">
+                <p className="text-sm text-emerald-600 font-medium">
+                  ✓ Document scanned successfully with clean, professional look!
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-6 bg-white p-4 sm:p-6 rounded-lg border border-slate-200">
           <h3 className="text-base sm:text-lg font-semibold text-blue-600 mb-4">How It Works</h3>
@@ -332,69 +459,6 @@ const Home = () => {
             </div>
           </div>
         </div>
-
-        {(originalPreview || correctedPreview) && (
-          <div className="mt-6 bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-slate-200">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-              <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Before / After</h2>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-slate-900">Zoom:</span>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="3"
-                  step="0.1"
-                  value={zoom}
-                  onChange={(e) => setZoom(parseFloat(e.target.value))}
-                  className="w-32 accent-blue-600"
-                />
-                <span className="text-sm text-slate-600 min-w-[3rem] text-right">{Math.round(zoom * 100)}%</span>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              {originalPreview && (
-                <div className="border-2 border-slate-200 rounded-lg overflow-hidden">
-                  <div className="bg-slate-100 px-4 py-2.5 border-b border-slate-200">
-                    <h3 className="text-sm font-semibold text-slate-700">Original</h3>
-                  </div>
-                  <div className="overflow-auto max-h-[500px] p-4 bg-slate-50 flex items-center justify-center">
-                    <img
-                      src={originalPreview}
-                      alt="original document"
-                      style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}
-                      className="transition-transform shadow-md"
-                    />
-                  </div>
-                </div>
-              )}
-              
-              {correctedPreview && (
-                <div className="border-2 border-slate-800 rounded-lg overflow-hidden">
-                  <div className="bg-slate-800 px-4 py-2.5 border-b border-slate-900">
-                    <h3 className="text-sm font-semibold text-white">Processed</h3>
-                  </div>
-                  <div className="overflow-auto max-h-[500px] p-4 bg-white flex items-center justify-center">
-                    <img
-                      src={correctedPreview}
-                      alt="processed document"
-                      style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}
-                      className="transition-transform shadow-md"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {correctedPreview && (
-              <div className="mt-4 p-3 bg-emerald-50 border border-emerald-600 rounded-lg">
-                <p className="text-sm text-emerald-600 font-medium">
-                  ✓ Document scanned successfully with clean, professional look!
-                </p>
-              </div>
-            )}
-          </div>
-        )}
       </main>
 
       <Footer />

@@ -23,7 +23,7 @@ const Footer = () => {
           <div className="flex items-center justify-start md:justify-end">
             <div className="flex gap-1 text-sm">
               <a
-                href="https://github.com"
+                href="https://github.com/manavvinayak/UpSight"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:text-blue-700 font-medium transition-colors px-2"
