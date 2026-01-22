@@ -3,8 +3,8 @@ import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
-const API_URL = 'http://localhost:5000/api/auth';
-API_URL = 'https://up-sight-delta.vercel.app/api/auth';
+// const API_URL = 'http://localhost:5000/api/auth';
+const API_URL = 'https://up-sight-delta.vercel.app/api/auth';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
