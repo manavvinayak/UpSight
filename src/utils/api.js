@@ -1,8 +1,9 @@
-const API_URL = import.meta.env.VITE_API_URL || 'https://upsight-server.onrender.com/api';
+const API_URL =
+  import.meta.env.VITE_API_URL || 'https://upsight-server.onrender.com';
 
 export const api = {
   async signup(email, password) {
-    const response = await fetch(`${API_URL}/auth/signup`, {
+    const response = await fetch(`${API_URL}/api/auth/signup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -11,16 +12,12 @@ export const api = {
     });
 
     const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Signup failed');
-    }
-
+    if (!response.ok) throw new Error(data.message || 'Signup failed');
     return data;
   },
 
   async signin(email, password) {
-    const response = await fetch(`${API_URL}/auth/signin`, {
+    const response = await fetch(`${API_URL}/api/auth/signin`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -29,43 +26,31 @@ export const api = {
     });
 
     const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Login failed');
-    }
-
+    if (!response.ok) throw new Error(data.message || 'Login failed');
     return data;
   },
 
   async verify(token) {
-    const response = await fetch(`${API_URL}/auth/verify`, {
+    const response = await fetch(`${API_URL}/api/auth/verify`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     });
 
     const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Verification failed');
-    }
-
+    if (!response.ok) throw new Error(data.message || 'Verification failed');
     return data;
   },
 
   async getUser(token) {
-    const response = await fetch(`${API_URL}/auth/me`, {
+    const response = await fetch(`${API_URL}/api/auth/me`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     });
 
     const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to get user');
-    }
-
+    if (!response.ok) throw new Error(data.message || 'Failed to get user');
     return data;
   },
 };
