@@ -86,6 +86,7 @@ const Home = () => {
 
     setLoading(true);
     setError('');
+    setCorrectedPreview(''); // Clear any previous results
 
     try {
       let imageFile = file;
@@ -93,32 +94,23 @@ const Home = () => {
       // Convert PDF to image if needed
       if (file.type === 'application/pdf') {
         console.log('Processing PDF file:', file.name);
-        try {
-          imageFile = await pdfToImage(file);
-          console.log('PDF converted to image successfully');
-          
-          // Show the converted PDF image as preview
-          const convertedPreviewUrl = URL.createObjectURL(imageFile);
-          setOriginalPreview(convertedPreviewUrl);
-          
-          // Update the file reference to the converted image
-          setFile(imageFile);
-        } catch (pdfError) {
-          console.error('PDF conversion failed:', pdfError);
-          setError(`PDF conversion failed: ${pdfError.message}`);
-          setLoading(false);
-          return;
-        }
+        imageFile = await pdfToImage(file);
+        console.log('✓ PDF converted successfully');
+        
+        // Show the converted PDF image as preview
+        const convertedPreviewUrl = URL.createObjectURL(imageFile);
+        setOriginalPreview(convertedPreviewUrl);
+        
+        // Update the file reference to the converted image
+        setFile(imageFile);
       }
 
       // Process with native Canvas API
+      console.log('Processing document...');
       const result = await processDocument(imageFile);
 
       if (!result.success) {
-        setError(result.message || 'Processing failed');
-        setOriginalPreview(result.originalUrl);
-        setLoading(false);
-        return;
+        throw new Error(result.message || 'Processing failed');
       }
 
       // Save to storage
@@ -144,6 +136,7 @@ const Home = () => {
 
       setOriginalPreview(result.originalUrl);
       setCorrectedPreview(result.correctedUrl || '');
+      console.log('✓ Processing completed successfully');
     } catch (e) {
       console.error('Processing error:', e);
       setError(`Failed to process document: ${e.message || 'Unknown error'}`);

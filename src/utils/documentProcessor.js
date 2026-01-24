@@ -305,20 +305,14 @@ const enhanceImage = (imageElement) => {
         console.log('Starting auto-crop...');
         const croppedCanvas = await autoCropDocument(img);
         
-        // Step 2: Enhance the cropped image
+        // Step 2: Create enhanced canvas
         console.log('Enhancing cropped document...');
-        const enhancedCanvas = await enhanceImage({ 
-          width: croppedCanvas.width, 
-          height: croppedCanvas.height,
-          addEventListener: () => {},
-          removeEventListener: () => {}
-        });
+        const enhancedCanvas = document.createElement('canvas');
+        enhancedCanvas.width = croppedCanvas.width;
+        enhancedCanvas.height = croppedCanvas.height;
         
         // Copy cropped canvas to enhancement canvas
         const enhanceCtx = enhancedCanvas.getContext('2d');
-        enhanceCtx.clearRect(0, 0, enhancedCanvas.width, enhancedCanvas.height);
-        enhancedCanvas.width = croppedCanvas.width;
-        enhancedCanvas.height = croppedCanvas.height;
         enhanceCtx.drawImage(croppedCanvas, 0, 0);
         
         // Get image data and enhance
@@ -358,8 +352,20 @@ const enhanceImage = (imageElement) => {
         enhanceCtx.putImageData(imageData, 0, 0);
         
         enhancedCanvas.toBlob((blob) => {
+          if (!blob) {
+            console.warn('Blob creation failed, using original');
+            resolve({
+              success: true,
+              originalUrl: imageUrl,
+              correctedUrl: imageUrl,
+              blob: imageFile
+            });
+            return;
+          }
+          
           const enhancedUrl = URL.createObjectURL(blob);
-           
+          console.log('Document processed successfully');
+          
           resolve({
             success: true,
             originalUrl: imageUrl,
@@ -368,7 +374,7 @@ const enhanceImage = (imageElement) => {
           });
         }, 'image/png', 0.95);
       } catch (error) {
-        console.error('Processing error:', error);
+        console.warn('Processing fallback to original:', error.message);
         resolve({
           success: true,
           originalUrl: imageUrl,
