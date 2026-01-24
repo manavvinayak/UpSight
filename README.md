@@ -122,71 +122,7 @@
 
 ## 🚀 Getting Started
 
-### Prerequisites
-
-Ensure you have the following installed:
-- **Node.js** (v18.0.0 or higher)
-- **npm** (v9.0.0 or higher)
-- **MongoDB** (local or cloud instance)
-- **Git** (for cloning the repository)
-
-### Installation
-
-#### 1️⃣ Clone the Repository
-
-```bash
-git clone https://github.com/yourusername/upsight.git
-cd UpSight
-```
-
-#### 2️⃣ Install Frontend Dependencies
-
-```bash
-cd upsight
-npm install
-```
-
-#### 3️⃣ Install Backend Dependencies
-
-```bash
-cd ../server
-npm install
-```
-
-#### 4️⃣ Environment Configuration
-
-Create `.env` files in both directories:
-
-**Frontend** (`upsight/.env`):
-```env
-VITE_API_URL=http://localhost:5000
-```
-
-**Backend** (`server/.env`):
-```env
-PORT=5000
-MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret_key
-CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
-CLOUDINARY_API_KEY=your_cloudinary_api_key
-CLOUDINARY_API_SECRET=your_cloudinary_api_secret
-```
-
-#### 5️⃣ Start Development Servers
-
-**Terminal 1 - Backend:**
-```bash
-cd server
-npm run dev
-```
-
-**Terminal 2 - Frontend:**
-```bash
-cd upsight
-npm run dev
-```
-
-
+ 
 
 ## 📂 Project Structure
 
