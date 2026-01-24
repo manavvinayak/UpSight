@@ -285,24 +285,7 @@ cd server
 # Set environment variables
 # Deploy with auto-build
 ```
-
-### Environment Variables for Production
-
-Ensure all environment variables are configured in your hosting platform dashboard.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
+ 
 
 ## 📝 License
 
@@ -322,13 +305,12 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 ## 📧 Contact
 
 For questions, suggestions, or support:
-- **Email**: support@upsight.app
 - **GitHub Issues**: [Create an issue](https://github.com/yourusername/upsight/issues)
 
 ---
 
 <div align="center">
-  <p>Made with ❤️ using Canvas API and modern web technologies</p>
+  <p> Made with research</p>
   <p>⭐ Star this repo if you find it useful!</p>
 </div>
 
