@@ -45,36 +45,19 @@ const Home = () => {
     if (selected.type.startsWith('image/')) {
       const previewUrl = URL.createObjectURL(selected);
       setOriginalPreview(previewUrl);
-    }
-
-    // Immediately upload to database
-    setLoading(true);
-    try {
-      let fileToUpload = selected;
-      
-      // Convert PDF to image if needed for upload
-      if (selected.type === 'application/pdf') {
-        try {
-          fileToUpload = await pdfToImage(selected);
-          const convertedPreviewUrl = URL.createObjectURL(fileToUpload);
-          setOriginalPreview(convertedPreviewUrl);
-        } catch (pdfError) {
-          console.error('PDF conversion failed:', pdfError);
-          setError(`PDF conversion failed: ${pdfError.message}`);
-          setLoading(false);
-          return;
-        }
+    } else if (selected.type === 'application/pdf') {
+      // For PDFs, convert to show preview but don't upload yet
+      setLoading(true);
+      try {
+        const convertedImage = await pdfToImage(selected);
+        const previewUrl = URL.createObjectURL(convertedImage);
+        setOriginalPreview(previewUrl);
+      } catch (pdfError) {
+        console.error('PDF preview failed:', pdfError);
+        setError(`PDF preview failed: ${pdfError.message}`);
+      } finally {
+        setLoading(false);
       }
-
-      // Upload original file immediately (use same file for both original and processed initially)
-      await uploadDocument(fileToUpload, fileToUpload, selected.name);
-      setUploadSuccess(true);
-      setTimeout(() => setUploadSuccess(false), 3000);
-    } catch (uploadError) {
-      console.error('Upload failed:', uploadError);
-      setError(`Upload failed: ${uploadError.message}`);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -96,13 +79,6 @@ const Home = () => {
         console.log('Processing PDF file:', file.name);
         imageFile = await pdfToImage(file);
         console.log('✓ PDF converted successfully');
-        
-        // Show the converted PDF image as preview
-        const convertedPreviewUrl = URL.createObjectURL(imageFile);
-        setOriginalPreview(convertedPreviewUrl);
-        
-        // Update the file reference to the converted image
-        setFile(imageFile);
       }
 
       // Process with native Canvas API
@@ -113,12 +89,19 @@ const Home = () => {
         throw new Error(result.message || 'Processing failed');
       }
 
-      // Save to storage
+      // Convert result URLs to File objects for upload
+      const originalBlob = await fetch(result.originalUrl).then(r => r.blob());
+      const originalFile = new File([originalBlob], file.name, { type: 'image/png' });
+      const processedFile = new File([result.blob], file.name, { type: 'image/png' });
+
+      // Upload to server
+      console.log('Uploading to server...');
+      await uploadDocument(originalFile, processedFile, file.name);
+      
+      // Save to local storage as backup
       const uploadId = Date.now().toString();
       const originalKey = `${user.id}_${uploadId}_original`;
       const processedKey = `${user.id}_${uploadId}_processed`;
-
-      const originalBlob = await fetch(result.originalUrl).then(r => r.blob());
 
       await storage.saveFile(originalKey, originalBlob);
       await storage.saveFile(processedKey, result.blob);
@@ -136,7 +119,9 @@ const Home = () => {
 
       setOriginalPreview(result.originalUrl);
       setCorrectedPreview(result.correctedUrl || '');
-      console.log('✓ Processing completed successfully');
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 3000);
+      console.log('✓ Processing and upload completed successfully');
     } catch (e) {
       console.error('Processing error:', e);
       setError(`Failed to process document: ${e.message || 'Unknown error'}`);
